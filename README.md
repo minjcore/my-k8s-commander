@@ -10,6 +10,7 @@
 ![Code size](https://img.shields.io/github/languages/code-size/minjcore/my-k8s-commander)
 ![Top language](https://img.shields.io/github/languages/top/minjcore/my-k8s-commander)
 ![Issues](https://img.shields.io/github/issues/minjcore/my-k8s-commander)
+![License](https://img.shields.io/github/license/minjcore/my-k8s-commander)
 
 App desktop quản trị Kubernetes, monorepo kiểu Khau-X: một Supervisor (Khâu X)
 chạy các micro-binary worker (k8s, server SSH, AI, console) và nối chúng lên UI
@@ -323,3 +324,7 @@ tồn tại để cgo export symbol cho FFI. Muốn kiểm tra core mà không m
 Supervisor quét `modules/`, chạy mọi file executable trong đó, tự restart sau 2s nếu module chết.
 Stdout của `console-worker` **không** được log lại (nó là sink render ANSI — log lại sẽ thành
 vòng lặp vô hạn); xem `SetEchoSink`.
+
+## Giấy phép
+
+MIT — xem [LICENSE](LICENSE).
