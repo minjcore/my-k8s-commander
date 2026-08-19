@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'src/native_core.dart';
 import 'src/routing.dart';
+import 'src/status.dart';
+import 'src/status_config.dart';
 
 void main() {
   runApp(const K8sCommanderApp());
@@ -46,6 +48,15 @@ class _TerminalScreenState extends State<TerminalScreen> {
   static const _pollInterval = Duration(milliseconds: 250);
   static const _maxLines = 2000;
 
+  /// Worker giữ context trong tiến trình của nó, UI không đọc được kubeconfig —
+  /// nên hỏi `ctx` một lần khi worker vừa lên để biết context đang dùng.
+  static const _k8sWorker = 'k8s-worker';
+  static const _ctxCommand = 'ctx';
+
+  /// Cứ ngần này nhịp poll thì stat lại file pattern (8 x 250ms = 2s). Đủ nhanh
+  /// để AI vừa thêm pattern là thấy, đủ thưa để không ai đếm được chi phí.
+  static const _reloadEveryTicks = 8;
+
   final TextEditingController _searchController = TextEditingController();
   final List<_LogLine> _logLines = [];
   final ScrollController _scrollController = ScrollController();
@@ -54,11 +65,43 @@ class _TerminalScreenState extends State<TerminalScreen> {
   String? _coreError;
   List<String> _modules = const [];
   Timer? _poll;
+  StatusModel _status = const StatusModel();
+  StatusRules _rules = StatusRules.builtin;
+  AlertRulesWatcher? _rulesWatcher;
+  bool _askedContext = false;
+  int _tick = 0;
 
   @override
   void initState() {
     super.initState();
+    _loadAlertRules();
     _bootCore();
+  }
+
+  void _loadAlertRules() {
+    final watcher = AlertRulesWatcher();
+    _rulesWatcher = watcher;
+    _applyRules(loadStatusRules(path: watcher.path));
+  }
+
+  /// _maybeReloadRules nạp lại luật khi file đổi — AI thêm pattern bằng tool
+  /// `alert` là thấy ngay, không phải mở lại app.
+  void _maybeReloadRules() {
+    final watcher = _rulesWatcher;
+    if (watcher == null || !watcher.changed()) return;
+    _append('[UI] cấu hình cảnh báo đổi, nạp lại: ${watcher.path}', _LineKind.log);
+    _applyRules(watcher.reload());
+  }
+
+  void _applyRules(StatusRulesParse parsed) {
+    _rules = parsed.rules;
+    if (parsed.rules.custom.isNotEmpty) {
+      _append('[UI] ${parsed.rules.custom.length} pattern cảnh báo tự định nghĩa',
+          _LineKind.log);
+    }
+    for (final problem in parsed.problems) {
+      _append('[UI] cấu hình cảnh báo: $problem', _LineKind.uiError);
+    }
   }
 
   void _bootCore() {
@@ -70,7 +113,11 @@ class _TerminalScreenState extends State<TerminalScreen> {
       if (!core.start()) {
         _append('[UI] StartCore trả về lỗi — xem log bên dưới', _LineKind.uiError);
       }
-      _poll = Timer.periodic(_pollInterval, (_) => _drain());
+      _poll = Timer.periodic(_pollInterval, (_) {
+        _tick++;
+        if (_tick % _reloadEveryTicks == 0) _maybeReloadRules();
+        _drain();
+      });
     } on CoreLoadException catch (e) {
       setState(() => _coreError = e.message);
       _append('[UI] ${e.message}', _LineKind.uiError);
@@ -86,16 +133,26 @@ class _TerminalScreenState extends State<TerminalScreen> {
     final lines = core.drainLogs();
     final modules = core.runningModules();
     if (lines.isEmpty && _listEquals(modules, _modules)) return;
+    var status = _status;
     setState(() {
       _modules = modules;
       for (final line in lines) {
         _logLines.add(_LogLine(line, _LineKind.log));
+        status = status.applyLine(line, rules: _rules);
       }
+      _status = status;
       if (_logLines.length > _maxLines) {
         _logLines.removeRange(0, _logLines.length - _maxLines);
       }
     });
+    _askContextOnce(core, modules);
     _scrollToEnd();
+  }
+
+  void _askContextOnce(NativeCore core, List<String> modules) {
+    if (_askedContext || !modules.contains(_k8sWorker)) return;
+    _askedContext = true;
+    core.send(_k8sWorker, _ctxCommand);
   }
 
   static bool _listEquals(List<String> a, List<String> b) {
@@ -169,6 +226,84 @@ class _TerminalScreenState extends State<TerminalScreen> {
       case _LineKind.log:
         return const Color(0xFFE6EDF3).withValues(alpha: 0.9);
     }
+  }
+
+  /// Một ô nhỏ trên status bar: icon + chữ, cắt bằng ellipsis khi hẹp.
+  Widget _statusChip(IconData icon, String text, {Color? color}) {
+    final tint = color ?? Colors.white.withValues(alpha: 0.55);
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: tint),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: tint),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Status bar: trạng thái gom từ stream log + cảnh báo bất thường. Bấm vào
+  /// cảnh báo để xoá (đã xem rồi).
+  Widget _statusBar() {
+    const accent = Color(0xFF00E5A0);
+    const danger = Color(0xFFFF7B72);
+    final alert = _status.latestAlert;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1117),
+        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+      ),
+      child: Row(
+        children: [
+          _statusChip(Icons.hub_outlined, _status.kubeContext ?? 'context ?'),
+          _statusChip(
+            _status.aiLocal ? Icons.memory : Icons.cloud_outlined,
+            _status.aiModel ?? 'ai ?',
+            color: _status.aiLocal ? accent.withValues(alpha: 0.8) : null,
+          ),
+          if (_status.monthCost != null)
+            _statusChip(Icons.payments_outlined, _status.monthCost!),
+          _statusChip(Icons.dns_outlined, '${_modules.length} worker'),
+          const Spacer(),
+          if (alert == null)
+            _statusChip(Icons.check_circle_outline, 'không có bất thường',
+                color: accent.withValues(alpha: 0.7))
+          else
+            Flexible(
+              child: InkWell(
+                onTap: () => setState(() => _status = _status.clearAlerts()),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 13, color: danger),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        '${_status.alerts.length} · $alert',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          color: danger,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -287,6 +422,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
                 ],
               ),
             ),
+            _statusBar(),
           ],
         ),
       ),
