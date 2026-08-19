@@ -286,6 +286,12 @@ parse chính dòng log worker in ra — đổi lại, định dạng output củ
 `ImagePullBackOff`, `OOMKilled`, `Evicted`…), node `NotReady`, và dòng `lỗi …`
 của worker. Bấm vào cảnh báo để xoá.
 
+UI tự gửi `health` xuống k8s-worker **30s một lần** (và một lần ngay khi khởi
+động) nên cảnh báo không phụ thuộc vào việc người dùng có gõ `get pods` hay
+không. Lệnh `health` quét pod + node và **chỉ in dòng bất thường** — cụm ổn thì
+không in gì, Terminal sạch. Mỗi lần quét là một lần list pod + node trên cụm;
+status bar hiện mốc `quét HH:MM:SS` của lần gần nhất.
+
 Thêm luật riêng bằng `~/.k8s-commander/alert-patterns.json`
 (đè bằng `K8SC_ALERT_PATTERNS`):
 

@@ -83,6 +83,9 @@ func (w *worker) handle(line string) []string {
 		return w.node(fields[1:])
 	case "helm":
 		return w.helm(fields[1:])
+	case "health":
+		// UI gọi định kỳ: chỉ in dòng bất thường, cụm ổn thì không in gì.
+		return w.health()
 	case "use":
 		if len(fields) < 2 {
 			return []string{"use: thiếu tên context"}
@@ -107,6 +110,7 @@ func (w *worker) handle(line string) []string {
 func usage() []string {
 	return append([]string{
 		"lệnh: get pods [-n <ns> | -A] | get nodes | get ns | ctx | use <context> | help",
+		"      health     # chỉ in pod/node bất thường, ổn thì không in gì",
 		"      node addr  # địa chỉ node dạng TSV, cho worker khác gọi",
 		"      helm ...   # cài/nâng cấp chart, xem `helm help`",
 	}, clusterUsage()...)

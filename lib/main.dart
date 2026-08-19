@@ -57,6 +57,12 @@ class _TerminalScreenState extends State<TerminalScreen> {
   /// để AI vừa thêm pattern là thấy, đủ thưa để không ai đếm được chi phí.
   static const _reloadEveryTicks = 8;
 
+  /// Tự gọi `health` mỗi 120 nhịp (30s) để status bar biết cụm có vấn đề mà
+  /// không cần người dùng gõ gì. Lệnh này im lặng khi cụm ổn nên không làm rác
+  /// Terminal; mỗi lần chạy là một lần list pod + node trên cụm.
+  static const _healthEveryTicks = 120;
+  static const _healthCommand = 'health';
+
   final TextEditingController _searchController = TextEditingController();
   final List<_LogLine> _logLines = [];
   final ScrollController _scrollController = ScrollController();
@@ -70,6 +76,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
   AlertRulesWatcher? _rulesWatcher;
   bool _askedContext = false;
   int _tick = 0;
+  DateTime? _lastHealthCheck;
 
   @override
   void initState() {
@@ -116,6 +123,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
       _poll = Timer.periodic(_pollInterval, (_) {
         _tick++;
         if (_tick % _reloadEveryTicks == 0) _maybeReloadRules();
+        if (_tick % _healthEveryTicks == 0) _sendHealth();
         _drain();
       });
     } on CoreLoadException catch (e) {
@@ -153,6 +161,26 @@ class _TerminalScreenState extends State<TerminalScreen> {
     if (_askedContext || !modules.contains(_k8sWorker)) return;
     _askedContext = true;
     core.send(_k8sWorker, _ctxCommand);
+    // Quét sức khoẻ ngay lần đầu, đừng để người dùng chờ hết 30s mới biết.
+    _sendHealth();
+  }
+
+  /// _sendHealth bảo k8s-worker quét pod/node. Worker chỉ in ra dòng bất thường,
+  /// nên vòng poll này không đổ bảng vào Terminal; cảnh báo (nếu có) tự chảy qua
+  /// parser của status bar như mọi dòng log khác.
+  void _sendHealth() {
+    final core = _core;
+    if (core == null || !_modules.contains(_k8sWorker)) return;
+    if (core.send(_k8sWorker, _healthCommand) == SendResult.ok) {
+      setState(() => _lastHealthCheck = DateTime.now());
+    }
+  }
+
+  /// Giờ dạng HH:MM:SS — hiện mốc tuyệt đối chứ không "N giây trước", vì status
+  /// bar chỉ vẽ lại khi có log mới, số đếm tương đối sẽ đứng im và gây hiểu sai.
+  static String _clock(DateTime t) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(t.hour)}:${two(t.minute)}:${two(t.second)}';
   }
 
   static bool _listEquals(List<String> a, List<String> b) {
@@ -272,6 +300,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
           if (_status.monthCost != null)
             _statusChip(Icons.payments_outlined, _status.monthCost!),
           _statusChip(Icons.dns_outlined, '${_modules.length} worker'),
+          if (_lastHealthCheck != null)
+            _statusChip(Icons.monitor_heart_outlined,
+                'quét ${_clock(_lastHealthCheck!)}'),
           const Spacer(),
           if (alert == null)
             _statusChip(Icons.check_circle_outline, 'không có bất thường',

@@ -44,6 +44,8 @@ Gọi tool này khi câu hỏi cần dữ liệu thật của cụm — pod nào
 đang ở context nào, endpoint của cluster là gì — thay vì trả lời theo trí nhớ.
 Lệnh đọc dùng được: "get pods [-n <ns> | -A]", "get nodes", "get ns", "ctx",
 "cluster list", "cluster info [tên]", "cluster test [tên|all]", "use <context>".
+"health" quét cả cụm và CHỈ in pod/node bất thường — hỏi "cụm có vấn đề gì
+không?" thì dùng lệnh này, rẻ hơn đọc cả bảng "get pods -A"; không in gì = ổn.
 Cài/nâng cấp chart bằng helm: "helm repo add <tên> <url>", "helm repo update",
 "helm search repo <từ khoá>", "helm show values <chart>", "helm list -n <ns>",
 "helm install <release> <chart> -n <ns> --create-namespace [--set k=v]",
@@ -202,7 +204,7 @@ func k8sReadOnly(fields []string) bool {
 	switch fields[0] {
 	case "kubectl":
 		return len(fields) > 1 && k8sReadOnly(fields[1:])
-	case "get", "ctx", "contexts", "help":
+	case "get", "ctx", "contexts", "help", "health":
 		return true
 	case "node":
 		return len(fields) > 1 && fields[1] == "addr"

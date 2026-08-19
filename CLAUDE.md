@@ -70,6 +70,12 @@ prefix `[tên-worker]`. Phải `Flush()` ngay sau mỗi lệnh — supervisor đ
   trả về rỗng" dù model chạy đúng. Chỉ gửi field `think` khi `/api/show` khai
   capability `thinking`; model không có mà gửi là ollama báo lỗi.
 
+- **`health` phải IM LẶNG khi cụm ổn** (`cmd/module-k8s/health.go`). UI tự gọi nó
+  30s/lần để status bar biết cụm có vấn đề; in cả bảng pod mỗi 30s là Terminal
+  thành rác. Định dạng dòng bất thường phải TRÙNG bảng `get pods`/`get nodes` vì
+  parser của status bar đọc theo cột (STATUS ở index 3 với pod, index 1 với node).
+  Trạng thái "bình thường" là allowlist (`podHealthyStatuses`) — trạng thái lạ
+  mặc định coi là bất thường.
 - **Status bar của UI đọc log chứ không có protocol riêng** (`lib/src/status.dart`).
   UI chỉ có `SendToModule` + `GetLogs`, nên nó parse chính chuỗi worker in ra
   (`đang dùng context: `, `* <ctx>`, dòng chi phí của ai-worker, cột STATUS của
