@@ -84,9 +84,12 @@ prefix `[tên-worker]`. Phải `Flush()` ngay sau mỗi lệnh — supervisor đ
 - **UI nạp lại pattern bằng stat mtime+size mỗi 2s, không `File.watch`** — worker
   ghi kiểu tmp+rename nên inode đổi, watch trên file mất tín hiệu ngay sau lần
   ghi đầu; watch thư mục thì hỏng khi `~/.k8s-commander` chưa tồn tại.
-- **`logBuf` (`cmd/supervisor/main.go`) KHÔNG có trần.** Nó chỉ được rút khi UI
-  gọi `GetLogs` (512KB mỗi lần poll). Worker in nhanh hơn ~2MB/s, hoặc không ai
-  poll, là buffer phình tới hết RAM.
+- **`logBuf` (`cmd/supervisor/main.go`) có trần 4MB, chạm trần thì bỏ log CŨ NHẤT.**
+  Buffer chỉ được rút khi UI gọi `GetLogs` (512KB mỗi lần poll), nên không có trần
+  là worker in nhanh hơn ~2MB/s (hoặc chạy headless không ai poll) sẽ ăn hết RAM.
+  `trimOldest` cắt xuống 3MB theo lô — cắt vừa đủ mỗi dòng thì mỗi dòng mới lại
+  kéo theo một lần trim + một dòng thông báo. Cắt phải dừng ở **biên dòng**: UI
+  đọc theo dòng, nhận dòng mất đầu là hiện ra rác.
 
 ### Hàng rào an toàn (đừng nới nếu không được yêu cầu)
 

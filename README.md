@@ -267,6 +267,14 @@ Hai chỗ dễ vấp: **Haiku 4.5 không nhận `output_config.effort`** (gửi 
 nên effort chỉ set cho tier mạnh; và output tool cắt ở 50 dòng thay vì 200 —
 bảng dài vừa tốn token gửi vào, vừa kéo model viết dài ra.
 
+#### Trần buffer log
+
+`logBuf` trong core giữ log chờ UI đọc, có trần **4MB**: chạm trần thì bỏ log cũ
+nhất (cắt xuống 3MB, dừng ở biên dòng) và in một dòng cho biết đã bỏ bao nhiêu
+byte. Cần vậy vì buffer chỉ được rút khi UI gọi `GetLogs` — 512KB mỗi nhịp poll
+250ms; worker in nhanh hơn mức đó, hoặc chạy headless không ai poll, thì buffer
+sẽ ăn hết RAM.
+
 #### Status bar và cảnh báo bất thường
 
 Thanh dưới cùng của app hiện context k8s đang dùng, model AI (local/cloud), chi

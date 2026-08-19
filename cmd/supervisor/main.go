@@ -10,6 +10,7 @@ import "C"
 import (
 	"bytes"
 	"errors"
+	"strconv"
 	"strings"
 	"sync"
 	"unsafe"
@@ -33,6 +34,16 @@ var (
 
 const consoleWorkerName = "console-worker"
 
+// Trần cho logBuf. Buffer chỉ được rút khi UI gọi GetLogs (512KB mỗi lần poll);
+// worker in nhanh hơn thế, hoặc không ai poll (chạy headless), là nó phình tới
+// hết RAM. Chạm trần thì bỏ log CŨ NHẤT — log mới đáng giá hơn log cũ.
+const (
+	maxLogBufBytes = 4 << 20 // 4MB
+	// Rút hẳn xuống mức này chứ không rút vừa đủ: cắt theo lô để mỗi dòng log
+	// mới không kéo theo một lần trim + một dòng thông báo.
+	logBufTrimTo = 3 << 20 // 3MB
+)
+
 type orchestratorLogWriter struct {
 	mu  *sync.Mutex
 	buf *bytes.Buffer
@@ -43,10 +54,30 @@ func (w *orchestratorLogWriter) Write(p []byte) (n int, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	n, err = w.buf.Write(p)
+	if w.buf.Len() > maxLogBufBytes {
+		dropped := trimOldest(w.buf, logBufTrimTo)
+		w.buf.WriteString(common.LogPrefix + " -> [Supervisor]: bỏ " +
+			strconv.Itoa(dropped) + " byte log cũ nhất (buffer chạm trần " +
+			strconv.Itoa(maxLogBufBytes) + " byte)\n")
+	}
 	if w.sup != nil {
 		_ = w.sup.WriteToModule(consoleWorkerName, p)
 	}
 	return n, err
+}
+
+// trimOldest bỏ phần đầu buffer cho tới khi còn <= keep byte, rồi bỏ thêm tới
+// hết dòng đang dở — để UI không nhận một dòng bị cắt đầu. Trả về số byte đã bỏ.
+func trimOldest(buf *bytes.Buffer, keep int) int {
+	excess := buf.Len() - keep
+	if excess <= 0 {
+		return 0
+	}
+	dropped := len(buf.Next(excess))
+	if i := bytes.IndexByte(buf.Bytes(), '\n'); i >= 0 {
+		dropped += len(buf.Next(i + 1))
+	}
+	return dropped
 }
 
 //export StartCore
