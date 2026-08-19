@@ -5,6 +5,10 @@
 ![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-ollama%20local%20%E2%86%92%20Claude-6E56CF)
 ![Ngân sách](https://img.shields.io/badge/ng%C3%A2n%20s%C3%A1ch-%245%2Fth%C3%A1ng-2EA043)
+![Last commit](https://img.shields.io/github/last-commit/minjcore/my-k8s-commander)
+![Code size](https://img.shields.io/github/languages/code-size/minjcore/my-k8s-commander)
+![Top language](https://img.shields.io/github/languages/top/minjcore/my-k8s-commander)
+![Issues](https://img.shields.io/github/issues/minjcore/my-k8s-commander)
 
 App desktop quản trị Kubernetes, monorepo kiểu Khau-X: một Supervisor (Khâu X)
 chạy các micro-binary worker (k8s, server SSH, AI, console) và nối chúng lên UI
