@@ -267,7 +267,36 @@ Hai chỗ dễ vấp: **Haiku 4.5 không nhận `output_config.effort`** (gửi 
 nên effort chỉ set cho tier mạnh; và output tool cắt ở 50 dòng thay vì 200 —
 bảng dài vừa tốn token gửi vào, vừa kéo model viết dài ra.
 
-#### Tool: ai-worker gọi được k8s-worker và server-worker
+#### Status bar và cảnh báo bất thường
+
+Thanh dưới cùng của app hiện context k8s đang dùng, model AI (local/cloud), chi
+phí tháng, số worker đang chạy, và **cảnh báo bất thường** soi từ stream log.
+
+UI không có kênh hỏi riêng xuống worker (chỉ `SendToModule` + `GetLogs`) nên nó
+parse chính dòng log worker in ra — đổi lại, định dạng output của worker là hợp
+đồng. Luật dựng sẵn: cột STATUS của `get pods` (`CrashLoopBackOff`,
+`ImagePullBackOff`, `OOMKilled`, `Evicted`…), node `NotReady`, và dòng `lỗi …`
+của worker. Bấm vào cảnh báo để xoá.
+
+Thêm luật riêng bằng `~/.k8s-commander/alert-patterns.json`
+(đè bằng `K8SC_ALERT_PATTERNS`):
+
+```json
+{ "patterns": [
+  { "name": "disk-full", "regex": "no space left on device.*pod=(\\S+)" },
+  { "name": "oom", "regex": "OOMKilled" }
+] }
+```
+
+Capture group 1 (nếu có) hiện làm tên đối tượng. Trần 32 pattern — mỗi pattern là
+một lần match regex trên **mọi** dòng log, chạy trên UI thread. JSON sai hoặc
+regex sai thì luật đó bị bỏ và báo ra Terminal, app không crash. UI stat lại file
+mỗi 2s nên sửa file (hoặc để AI sửa) là thấy ngay, không cần mở lại app.
+
+Nhờ AI thêm hộ: `ai thêm pattern cảnh báo bắt OOMKilled` → nó gọi tool `alert`,
+và vì đây là lệnh ghi nên phải gõ `ai yes` để duyệt.
+
+#### Tool: ai-worker gọi được k8s-worker, server-worker và sổ cảnh báo
 
 Model có 2 tool — `k8s` và `server` — mỗi tool nhận 1 chuỗi `command` rồi đẩy
 xuống worker tương ứng, nên hỏi "pod nào đang crash" là nó tự chạy `get pods -A`

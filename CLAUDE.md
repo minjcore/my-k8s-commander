@@ -70,13 +70,32 @@ prefix `[tên-worker]`. Phải `Flush()` ngay sau mỗi lệnh — supervisor đ
   trả về rỗng" dù model chạy đúng. Chỉ gửi field `think` khi `/api/show` khai
   capability `thinking`; model không có mà gửi là ollama báo lỗi.
 
+- **Status bar của UI đọc log chứ không có protocol riêng** (`lib/src/status.dart`).
+  UI chỉ có `SendToModule` + `GetLogs`, nên nó parse chính chuỗi worker in ra
+  (`đang dùng context: `, `* <ctx>`, dòng chi phí của ai-worker, cột STATUS của
+  `get pods`). Hệ quả: **đổi chuỗi output của worker là phải sửa parser** — test
+  trong `test/status_test.dart` bám đúng những chuỗi đó.
+- **File `alert-patterns.json` do CẢ HAI bên dùng**: ai-worker ghi
+  (`cmd/module-ai/alerts.go`, tool `alert`), UI đọc (`lib/src/status_config.dart`).
+  Trần số pattern phải khớp nhau: `maxAlertPatterns` (Go) = `maxCustomPatterns`
+  (Dart) = 32. Regex ghi bằng Go RE2 nhưng chạy bằng `RegExp` của Dart — cú pháp
+  lạ có thể compile được bên này mà không bên kia, nên UI phải chịu được regex
+  lỗi (bỏ luật đó, báo `problems`, không crash).
+- **UI nạp lại pattern bằng stat mtime+size mỗi 2s, không `File.watch`** — worker
+  ghi kiểu tmp+rename nên inode đổi, watch trên file mất tín hiệu ngay sau lần
+  ghi đầu; watch thư mục thì hỏng khi `~/.k8s-commander` chưa tồn tại.
+- **`logBuf` (`cmd/supervisor/main.go`) KHÔNG có trần.** Nó chỉ được rút khi UI
+  gọi `GetLogs` (512KB mỗi lần poll). Worker in nhanh hơn ~2MB/s, hoặc không ai
+  poll, là buffer phình tới hết RAM.
+
 ### Hàng rào an toàn (đừng nới nếu không được yêu cầu)
 
 - `module-server` không dùng `InsecureIgnoreHostKey`; host lạ bị chặn, phải qua
   `server trust` (TOFU, in fingerprint). Không lưu mật khẩu, chỉ agent/private key.
-- `module-ai` cho model gọi 2 tool (`k8s`, `server`) nhưng theo **allowlist lệnh
-  đọc**; lệnh ghi phải người dùng gõ `ai yes` để duyệt (`K8SC_AI_APPROVAL=ask|auto|deny`).
-  Allowlist chứ không blocklist: lệnh lạ mặc định coi là lệnh ghi.
+- `module-ai` cho model gọi 3 tool (`k8s`, `server`, `alert`) nhưng theo **allowlist
+  lệnh đọc**; lệnh ghi phải người dùng gõ `ai yes` để duyệt
+  (`K8SC_AI_APPROVAL=ask|auto|deny`). Allowlist chứ không blocklist: lệnh lạ mặc
+  định coi là lệnh ghi. `alert add/rm` sửa file cấu hình thật nên cũng phải duyệt.
 - `cluster add/rm`, `cluster use --persist` ghi vào kubeconfig **thật** — luôn in
   ra đường dẫn file đã sửa, `rm` bắt buộc `--yes`.
 
