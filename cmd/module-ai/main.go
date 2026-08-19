@@ -39,6 +39,9 @@ const (
 	// Dừng vòng tool sau ngần này lượt để một model đi lạc không quay vòng mãi.
 	maxToolRounds = 8
 
+	// Dấu mở/đóng code fence, xem stripFences.
+	fenceMarker = "```"
+
 	systemPrompt = `Bạn là trợ lý vận hành Kubernetes trong một app terminal.
 Trả lời bằng ngôn ngữ người dùng dùng để hỏi. Ngắn gọn, đi thẳng vào việc.
 Output là plain text hiển thị trong terminal: không dùng markdown heading,
@@ -223,7 +226,7 @@ func converse(client *anthropic.Client, oc *ollamaClient, pool *workerrpc.Pool, 
 			switch variant := block.AsAny().(type) {
 			case anthropic.BetaTextBlock:
 				sawText = true
-				emit(out, []string{variant.Text})
+				emit(out, []string{stripFences(variant.Text)})
 			case anthropic.BetaToolUseBlock:
 				results = append(results, runTool(pool, ap, out, variant))
 			}
@@ -288,6 +291,24 @@ func apiError(err error) string {
 	default:
 		return fmt.Sprintf("%d %s", apiErr.StatusCode, apiErr.Error())
 	}
+}
+
+// stripFences bỏ các dòng mở/đóng code fence, giữ nguyên nội dung bên trong.
+// System prompt đã cấm fence nhưng model local nhỏ vẫn chèn; output đi ra
+// Terminal plain text nên ``` chỉ là rác trên màn hình.
+func stripFences(text string) string {
+	if !strings.Contains(text, fenceMarker) {
+		return text
+	}
+	lines := strings.Split(text, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, l := range lines {
+		if strings.HasPrefix(strings.TrimSpace(l), fenceMarker) {
+			continue
+		}
+		kept = append(kept, l)
+	}
+	return strings.Join(kept, "\n")
 }
 
 func emit(out *bufio.Writer, lines []string) {

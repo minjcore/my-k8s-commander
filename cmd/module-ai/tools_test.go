@@ -101,3 +101,25 @@ func TestToolDefsJSON(t *testing.T) {
 		}
 	}
 }
+
+// Model local vẫn chèn code fence dù system prompt cấm; Terminal là plain text
+// nên dòng ``` phải bị bỏ, nội dung bên trong giữ nguyên.
+func TestStripFences(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"không có fence", "không có fence"},
+		{"thêm bằng lệnh:\n```\nserver add prod-1 ubuntu@10.0.0.5\n```",
+			"thêm bằng lệnh:\nserver add prod-1 ubuntu@10.0.0.5"},
+		{"```bash\nkubectl get pods\n```", "kubectl get pods"},
+		// Fence thụt lề vẫn là fence.
+		{"  ```\nx\n  ```", "x"},
+		// Fence không đóng cũng phải bỏ.
+		{"lệnh:\n```\nget pods", "lệnh:\nget pods"},
+		// Backtick lẻ trong câu không phải fence, giữ nguyên.
+		{"gõ `ai yes` để duyệt", "gõ `ai yes` để duyệt"},
+	}
+	for _, c := range cases {
+		if got := stripFences(c.in); got != c.want {
+			t.Fatalf("stripFences(%q) = %q, chờ %q", c.in, got, c.want)
+		}
+	}
+}
