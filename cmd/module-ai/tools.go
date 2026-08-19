@@ -71,9 +71,22 @@ Lệnh đổi trạng thái ("server add/rm/trust") và "server run" (thực thi
 phải chờ người dùng duyệt — chỉ gọi khi họ đã yêu cầu rõ ràng.`),
 	}
 
+	alert := anthropic.BetaToolParam{
+		Name:        toolAlert,
+		InputSchema: commandSchema,
+		Description: anthropic.String(`Sửa danh sách pattern cảnh báo mà status bar của app dùng để soi log.
+Mỗi pattern là 1 regex; dòng log nào khớp thì status bar bật cảnh báo đỏ.
+Lệnh: "alert list" (đọc), "alert add <tên> <regex>", "alert rm <tên>".
+Regex có capture group thì group 1 hiện làm tên đối tượng, ví dụ:
+  alert add disk-full no space left on device.*pod=(\S+)
+add/rm ghi vào file cấu hình thật nên phải chờ người dùng duyệt.
+Chỉ gọi khi người dùng yêu cầu rõ ràng là muốn thêm/bớt cảnh báo.`),
+	}
+
 	return []anthropic.BetaToolUnionParam{
 		{OfTool: &k8s},
 		{OfTool: &server},
+		{OfTool: &alert},
 	}
 }
 
@@ -88,6 +101,11 @@ func runTool(pool *workerrpc.Pool, ap *approver, out *bufio.Writer, use anthropi
 	command := strings.TrimSpace(in.Command)
 	if command == "" {
 		return anthropic.NewBetaToolResultBlock(use.ID, "thiếu command", true)
+	}
+
+	// Tool alert không gọi worker nào — nó sửa file cấu hình tại chỗ.
+	if use.Name == toolAlert {
+		return runAlertTool(ap, out, use.ID, command)
 	}
 
 	worker, ok := workerFor(use.Name)
@@ -126,6 +144,30 @@ func runTool(pool *workerrpc.Pool, ap *approver, out *bufio.Writer, use anthropi
 	return anthropic.NewBetaToolResultBlock(use.ID, strings.Join(lines, "\n"), false)
 }
 
+// runAlertTool chạy lệnh alert sau khi qua approver. Vẫn log ra Terminal như
+// tool worker để người dùng thấy AI vừa sửa gì.
+func runAlertTool(ap *approver, out *bufio.Writer, useID, command string) anthropic.BetaContentBlockParamUnion {
+	// Model hay gửi kèm cả chữ "alert" ("alert add oom ..."); bỏ đi để dòng hỏi
+	// duyệt không thành "alert alert add oom ...".
+	command = strings.TrimSpace(strings.TrimPrefix(command, toolAlert+" "))
+	emit(out, []string{"→ " + toolAlert + ": " + command})
+
+	ok, reason := ap.allow(out, toolAlert, toolAlert, command)
+	if reason != "" {
+		emit(out, []string{"  (" + reason + ")"})
+	}
+	if !ok {
+		return anthropic.NewBetaToolResultBlock(useID,
+			"Không chạy: "+reason+". Đây là lệnh sửa file cấu hình. Đừng thử lại.", true)
+	}
+
+	lines := runAlert(command)
+	for _, l := range lines {
+		emit(out, []string{"  " + l})
+	}
+	return anthropic.NewBetaToolResultBlock(useID, strings.Join(lines, "\n"), false)
+}
+
 func workerFor(toolName string) (string, bool) {
 	switch toolName {
 	case toolK8s:
@@ -149,6 +191,8 @@ func readOnly(toolName, command string) bool {
 		return k8sReadOnly(fields)
 	case toolServer:
 		return serverReadOnly(fields)
+	case toolAlert:
+		return alertReadOnly(fields)
 	default:
 		return false
 	}

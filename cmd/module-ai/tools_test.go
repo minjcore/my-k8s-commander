@@ -75,11 +75,11 @@ func TestToolDefsJSON(t *testing.T) {
 	if err := json.Unmarshal(raw, &tools); err != nil {
 		t.Fatalf("unmarshal: %v\n%s", err, raw)
 	}
-	if len(tools) != 2 {
-		t.Fatalf("muốn 2 tool, nhận %d", len(tools))
+	if len(tools) != 3 {
+		t.Fatalf("muốn 3 tool, nhận %d", len(tools))
 	}
 	for _, tool := range tools {
-		if tool.Name != toolK8s && tool.Name != toolServer {
+		if tool.Name != toolK8s && tool.Name != toolServer && tool.Name != toolAlert {
 			t.Errorf("tên tool lạ: %q", tool.Name)
 		}
 		if tool.Description == "" {
