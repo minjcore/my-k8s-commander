@@ -1,6 +1,7 @@
 # my-k8s-commander
 
 [![CI](https://github.com/minjcore/my-k8s-commander/actions/workflows/ci.yml/badge.svg)](https://github.com/minjcore/my-k8s-commander/actions/workflows/ci.yml)
+[![macOS smoke](https://img.shields.io/github/check-runs/minjcore/my-k8s-commander/main?nameFilter=macos-smoke&label=macOS%20smoke&logo=apple&logoColor=white)](https://github.com/minjcore/my-k8s-commander/actions/workflows/ci.yml)
 ![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
 ![Flutter](https://img.shields.io/badge/Flutter-Dart%203.10-02569B?logo=flutter&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)
