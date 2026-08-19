@@ -1,6 +1,16 @@
 # my-k8s-commander
 
-Dự án Monorepo (cấu trúc giống Khau-X): Supervisor (Khâu X) + micro-binaries AI / K8s / Server.
+![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
+![Flutter](https://img.shields.io/badge/Flutter-Dart%203.10-02569B?logo=flutter&logoColor=white)
+![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)
+![AI](https://img.shields.io/badge/AI-ollama%20local%20%E2%86%92%20Claude-6E56CF)
+![Ngân sách](https://img.shields.io/badge/ng%C3%A2n%20s%C3%A1ch-%245%2Fth%C3%A1ng-2EA043)
+
+App desktop quản trị Kubernetes, monorepo kiểu Khau-X: một Supervisor (Khâu X)
+chạy các micro-binary worker (k8s, server SSH, AI, console) và nối chúng lên UI
+Flutter qua FFI. Trợ lý AI
+hỏi model **ollama chạy local** trước — miễn phí — chỉ rơi về Claude API khi
+không có daemon, nên cả công cụ vừa trong ngân sách $5/tháng.
 
 ## Cấu trúc
 
