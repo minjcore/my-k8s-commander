@@ -1,5 +1,6 @@
 # my-k8s-commander
 
+[![CI](https://github.com/minjcore/my-k8s-commander/actions/workflows/ci.yml/badge.svg)](https://github.com/minjcore/my-k8s-commander/actions/workflows/ci.yml)
 ![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
 ![Flutter](https://img.shields.io/badge/Flutter-Dart%203.10-02569B?logo=flutter&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)
