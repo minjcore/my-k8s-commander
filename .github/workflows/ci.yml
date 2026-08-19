@@ -29,6 +29,24 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
 
+  # Round-trip FFI thật (StartCore -> SendToModule -> GetLogs) chỉ chạy được ở
+  # macOS: dylib c-shared + tên thư viện theo nền tảng.
+  macos-smoke:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: make smoke
+
   flutter:
     runs-on: ubuntu-latest
     steps:
