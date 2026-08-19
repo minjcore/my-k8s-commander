@@ -10,7 +10,7 @@ import (
 type MessageType byte
 
 const (
-	MsgPodStatus  MessageType = 0x01
+	MsgPodStatus   MessageType = 0x01
 	MsgNodeMetrics MessageType = 0x02
 	MsgConsoleLog  MessageType = 0x03
 	MsgUIAction    MessageType = 0x04 // User click từ Flutter

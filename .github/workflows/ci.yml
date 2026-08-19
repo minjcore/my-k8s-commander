@@ -18,6 +18,14 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: gofmt
+        run: |
+          lech=$(gofmt -l cmd pkg internal)
+          if [ -n "$lech" ]; then
+            echo "file chưa gofmt:"
+            echo "$lech"
+            exit 1
+          fi
       - run: go vet ./...
       - run: go test ./...
 

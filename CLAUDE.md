@@ -15,7 +15,7 @@ make app                  # (macOS) .app tự chứa — xem mục Bundle bên d
 go test ./...             # test Go
 flutter test              # test Dart
 flutter analyze lib test tool
-gofmt -l cmd pkg internal # cmd/supervisor/main.go và pkg/common/protocol.go lệch sẵn từ trước
+gofmt -l cmd pkg internal # phải rỗng — CI chặn nếu có file lệch
 ```
 
 Chạy 1 test: `go test ./cmd/module-server/ -run TestSSHVoiAgentRong -v`.

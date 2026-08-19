@@ -71,9 +71,10 @@ func StartCore(paths *C.char) C.int {
 	return 0
 }
 
-//export SendToModule
 // SendToModule đẩy 1 dòng lệnh vào stdin của module. Trả 0 nếu ghi được,
 // -1 nếu core chưa start / tham số nil, -2 nếu module không chạy.
+//
+//export SendToModule
 func SendToModule(name *C.char, line *C.char) C.int {
 	if sup == nil || name == nil || line == nil {
 		return -1
@@ -88,9 +89,10 @@ func SendToModule(name *C.char, line *C.char) C.int {
 	return 0
 }
 
-//export ListModules
 // ListModules trả về tên các module đang chạy, phân cách bằng ','. Buffer tĩnh,
 // hợp lệ tới lần gọi tiếp theo; Dart phải copy ra String ngay.
+//
+//export ListModules
 func ListModules() *C.char {
 	if sup == nil {
 		return nil
