@@ -9,6 +9,7 @@ typedef Route = ({String module, String payload});
 const aiWorker = 'ai-worker';
 const k8sWorker = 'k8s-worker';
 const serverWorker = 'server-worker';
+const swarmWorker = 'swarm-worker';
 
 /// Alias người dùng gõ -> tên binary trong modules/.
 const _aliases = <String, String>{
@@ -18,6 +19,8 @@ const _aliases = <String, String>{
   'cluster': k8sWorker,
   'server': serverWorker,
   'srv': serverWorker,
+  'swarm': swarmWorker,
+  'docker': swarmWorker,
 };
 
 /// Alias mà worker cần thấy lại từ khoá đầu (`kubectl get pods`, `cluster list`,

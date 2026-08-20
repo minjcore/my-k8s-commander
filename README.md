@@ -211,6 +211,34 @@ Sau đó `server run node/gke-a uptime` là chạy trên entry khớp với node
 cố ý không tự SSH vào node lạ, tức là không mở thêm đường xác thực nào. Node chưa
 có entry thì báo rõ và chỉ cách thêm, chứ không im lặng bỏ qua.
 
+### swarm-worker (Docker Swarm)
+
+Nói trực tiếp với Docker Engine API qua SDK (`github.com/moby/moby/client`),
+không shell ra CLI. Chọn daemon theo đúng thứ tự của docker CLI:
+`DOCKER_HOST` → **docker context** đang chọn → socket mặc định. Context phải tự
+đọc từ `~/.docker` vì đó là khái niệm của CLI, SDK không biết — thiếu bước này là
+máy dùng colima/Rancher/OrbStack báo "daemon not running" dù `docker ps` vẫn chạy.
+
+`DOCKER_HOST=ssh://user@host` cũng dùng được: worker chạy
+`ssh <host> docker system dial-stdio` rồi bơm HTTP qua đó, đúng cách CLI làm
+(máy từ xa cần có docker CLI).
+
+```
+swarm info | swarm node ls | swarm service ls | swarm service ps <tên>
+swarm stack ls | swarm stack services <tên> | swarm health
+swarm service scale <tên> <n> | swarm service rm <tên>
+swarm node update <tên> --availability <active|pause|drain>
+```
+
+Gõ `docker ...` cũng vào worker này. `health` chỉ in service thiếu replica và
+node không ready/không active — ổn thì không in gì, cùng hợp đồng với `health`
+của k8s-worker.
+
+Allowlist theo cặp (đối tượng, verb) ở `pkg/swarmpolicy`. **Cố tình không có**:
+`swarm init|join|leave` (một lệnh `leave --force` trên manager là xoá sổ cả cụm),
+`stack deploy` (cần parse compose file — dùng `docker stack deploy` bằng tay), và
+`service create` (số flag quá lớn để allowlist cho có ý nghĩa).
+
 ### ai-worker (ollama local, rơi về Claude API)
 
 **Thử ollama local trước.** Mỗi câu hỏi, worker dò `http://localhost:11434` bằng

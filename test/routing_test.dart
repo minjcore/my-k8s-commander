@@ -60,4 +60,25 @@ void main() {
         (module: aiWorker, payload: 'xin chào'));
     expect(routeCommand('GET pods').module, k8sWorker);
   });
+
+  group('swarm', () {
+    test('swarm/docker đi tới swarm-worker, cắt prefix', () {
+      for (final line in ['swarm service ls', 'docker service ls']) {
+        final r = routeCommand(line);
+        expect(r.module, swarmWorker, reason: line);
+        expect(r.payload, 'service ls', reason: line);
+      }
+    });
+
+    test('gõ trống alias thì worker tự in usage', () {
+      expect(routeCommand('swarm').payload, 'help');
+    });
+
+    // "service ls" trống prefix KHÔNG vào swarm-worker: nó không nằm trong danh
+    // sách verb k8s, nên rơi về AI như mọi câu hỏi tự nhiên khác.
+    test('service ls trống prefix rơi về AI', () {
+      expect(routeCommand('service ls').module, aiWorker);
+    });
+  });
 }
+

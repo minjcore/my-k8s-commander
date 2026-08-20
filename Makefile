@@ -8,12 +8,14 @@ ifeq ($(OS),Windows_NT)
   K8S_WORKER        := $(MODULES_DIR)/k8s-worker.exe
   CONSOLE_WORKER    := $(MODULES_DIR)/console-worker.exe
   SERVER_WORKER     := $(MODULES_DIR)/server-worker.exe
+  SWARM_WORKER      := $(MODULES_DIR)/swarm-worker.exe
   FFI_LIB           := myk8s_commander.dll
 else
   AI_WORKER         := $(MODULES_DIR)/ai-worker
   K8S_WORKER        := $(MODULES_DIR)/k8s-worker
   CONSOLE_WORKER    := $(MODULES_DIR)/console-worker
   SERVER_WORKER     := $(MODULES_DIR)/server-worker
+  SWARM_WORKER      := $(MODULES_DIR)/swarm-worker
   ifeq ($(shell uname -s),Darwin)
     FFI_LIB         := libmyk8s_commander.dylib
   else
@@ -37,6 +39,7 @@ build-modules: | $(MODULES_DIR)
 	go build -o $(K8S_WORKER) ./cmd/module-k8s
 	go build -o $(CONSOLE_WORKER) ./cmd/module-console
 	go build -o $(SERVER_WORKER) ./cmd/module-server
+	go build -o $(SWARM_WORKER) ./cmd/module-swarm
 
 $(MODULES_DIR):
 	mkdir -p $(MODULES_DIR)
@@ -69,6 +72,7 @@ clean:
 	rm -f $(MODULES_DIR)/k8s-worker $(MODULES_DIR)/k8s-worker.exe
 	rm -f $(MODULES_DIR)/console-worker $(MODULES_DIR)/console-worker.exe
 	rm -f $(MODULES_DIR)/server-worker $(MODULES_DIR)/server-worker.exe
+	rm -f $(MODULES_DIR)/swarm-worker $(MODULES_DIR)/swarm-worker.exe
 
 # clean-all thêm cache của Flutter (build/ + .dart_tool/, cỡ 400MB). Tách riêng
 # khỏi `clean` vì dựng lại tốn vài phút.

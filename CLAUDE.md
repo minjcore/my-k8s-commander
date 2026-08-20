@@ -24,6 +24,9 @@ Worker gõ tay được, không cần app: `printf 'get pods -A\n' | ./modules/k
 
 ## Kiến trúc
 
+Worker hiện có: `k8s-worker` (client-go + helm), `server-worker` (SSH),
+`swarm-worker` (Docker Engine API), `ai-worker`, `console-worker`.
+
 `cmd/supervisor` build hai lần: ra binary rỗng (chỉ để cgo export symbol) và ra
 shared lib cho Flutter FFI. `internal/supervisor` quét `modules/`, chạy mọi file
 executable trong đó, tự restart sau 2s. UI (`lib/main.dart`) poll `GetLogs()`
@@ -96,6 +99,22 @@ prefix `[tên-worker]`. Phải `Flush()` ngay sau mỗi lệnh — supervisor đ
   `trimOldest` cắt xuống 3MB theo lô — cắt vừa đủ mỗi dòng thì mỗi dòng mới lại
   kéo theo một lần trim + một dòng thông báo. Cắt phải dừng ở **biên dòng**: UI
   đọc theo dòng, nhận dòng mất đầu là hiện ra rác.
+
+- **`swarm-worker` dùng SDK nên KHÔNG thấy docker context** — context là khái
+  niệm của docker CLI (`~/.docker/config.json` + `contexts/meta/<sha256(tên)>/`),
+  Engine API không có. Không tự đọc chỗ đó thì máy dùng colima/Rancher/OrbStack
+  sẽ thấy "daemon not running" trong khi `docker ps` gõ tay vẫn chạy
+  (`cmd/module-swarm/context.go`). Thứ tự: `DOCKER_HOST` -> context -> socket mặc định.
+- **`DOCKER_HOST=ssh://` cũng phải tự nối**: `connhelper` nằm trong docker/cli,
+  không có trong module client. `cmd/module-swarm/docker.go` chạy
+  `ssh <host> docker system dial-stdio` rồi bọc stdin/stdout thành `net.Conn`.
+  Pipe không có deadline nên timeout dựa vào context của từng lệnh.
+- **Swarm không có API "stack"** — docker CLI gom service theo label
+  `com.docker.stack.namespace`. `stack ls` của worker cũng chỉ đếm label đó, và
+  `stack deploy` KHÔNG làm được qua SDK (cần parse compose file trong docker/cli).
+- **`service scale` phải gửi kèm `Version` của spec vừa đọc** — Docker từ chối
+  update nếu có ai sửa service ở giữa. Và không chờ task Running: chờ đồng bộ sẽ
+  vượt timeout RPC của ai-worker rồi bị kill, cùng lý do với `helm install --wait`.
 
 ### Hàng rào an toàn (đừng nới nếu không được yêu cầu)
 
